@@ -1,0 +1,10 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+scikit-learn==1.6.0
+joblib==1.4.2
+numpy==2.2.1
+shap==0.52.0
+duckduckgo-search==7.2.1
+sentence-transformers==3.3.1
+faiss-cpu==1.9.0.post1
+langchain-ollama==0.2.2
