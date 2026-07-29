@@ -1,9 +1,8 @@
 # TruthLens
 
 TruthLens is a small fake-news analysis project that combines a local text classifier with an optional AI-assisted source review. Paste a headline or article, then get a language-pattern prediction, the words that influenced it, relevant search links, and a cautious credibility score.
-
-It is a portfolio project, not a fact-checking authority.
-
+**Introduction**
+TruthLens is a two-tier analyzer: (1) lightweight sklearn fake/real stylistic classifier with explainability, plus (2) optional retrieval-augmented narrative via DuckDuckGo and local Mistral through Ollama. The React app is a polished single-page demo with dark mode and session history. The project is optimized for local full-stack demo (Ollama + Vite proxy) and documented cloud split (ML + search on Docker API, static UI elsewhere, often without working LLM). Any work that claims accuracy, adds authority language, or commits secrets would contradict the project's stated scope.
 ## Architecture
 
 ```text
