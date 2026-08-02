@@ -1,37 +1,92 @@
 # TruthLens
 
-TruthLens is a small fake-news analysis project that combines a local text classifier with an optional AI-assisted source review. Paste a headline or article, then get a language-pattern prediction, the words that influenced it, relevant search links, and a cautious credibility score.
-**Introduction**
-TruthLens is a two-tier analyzer: (1) lightweight sklearn fake/real stylistic classifier with explainability, plus (2) optional retrieval-augmented narrative via DuckDuckGo and local Mistral through Ollama. The React app is a polished single-page demo with dark mode and session history. The project is optimized for local full-stack demo (Ollama + Vite proxy) and documented cloud split (ML + search on Docker API, static UI elsewhere, often without working LLM). Any work that claims accuracy, adds authority language, or commits secrets would contradict the project's stated scope.
-## Architecture
+**Repository:** [github.com/swapnilswami332/fake-news-detector](https://github.com/swapnilswami332/fake-news-detector)
+
+TruthLens is a fake-news analysis demo that combines a **language-pattern classifier** with an **optional source-aware review** (search + local LLM). Paste a headline or article to see a Fake/Real label, confidence, word-level reasoning, linked sources, and a credibility score.
+
+This is a portfolio project — not a fact-checking authority.
+
+---
+
+## Table of contents
+
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Project layout](#project-layout)
+- [Quick start](#quick-start)
+- [API](#api)
+- [Deployment](#deployment)
+- [Limitations](#limitations)
+- [Docker](#docker)
+
+---
+
+## Features
+
+| Layer | What you get |
+|--------|----------------|
+| **ML** | TF-IDF + Logistic Regression, SHAP-style word explanations |
+| **Retrieval** | DuckDuckGo search, semantic ranking (MiniLM + FAISS) |
+| **AI review** | Optional summary via **Ollama + Mistral** (local only) |
+| **UI** | React single page — dark mode, session history, copy result |
+
+---
+
+## How it works
 
 ```text
-Browser
-  │ POST /predict
-  ▼
-FastAPI
-  ├── TF-IDF + Logistic Regression ──> Fake/Real, confidence, word explanation
-  └── DuckDuckGo search ──> semantic ranking ──> Ollama Mistral summary
-                                                │
-                                                ▼
-                                 combined response and credibility score
+Browser  →  POST /predict  →  FastAPI
+                                ├─ normalize text → classify (Fake/Real)
+                                ├─ explain influential terms (SHAP or coefficients)
+                                └─ extract claim → search → rank sources → LLM summary
+                                        ↓
+                              JSON response + credibility score
 ```
 
-## Tech stack
+1. Text is normalized and scored by the sklearn pipeline.
+2. Important tokens are surfaced for the chosen class.
+3. The longest sentence drives a web search for related sources.
+4. Sources are ranked; Mistral (via Ollama) summarizes support/contradiction when available.
+5. Scores are combined into a **credibility score** for the UI — not a guarantee of truth.
 
-- **API:** Python, FastAPI, Pydantic
-- **ML:** scikit-learn, TF-IDF, Logistic Regression, SHAP
-- **Retrieval:** DuckDuckGo Search, Sentence Transformers, FAISS
-- **AI review:** LangChain Ollama with local Mistral
-- **UI:** React, TypeScript, Tailwind CSS, Axios
+Training data lives in `backend/train.py`: a small, transparent demo corpus. Swap it for a real labeled dataset before claiming production accuracy.
 
-## Getting started
+---
+
+## Project layout
+
+```text
+fake-news-detector/
+├── backend/
+│   ├── app.py           # FastAPI routes (/predict, /health)
+│   ├── predict.py       # Model load + SHAP explanations
+│   ├── fact_checker.py  # Search, FAISS ranking, Ollama
+│   ├── train.py         # Train and save model artifacts
+│   └── models/          # model.pkl, vectorizer.pkl (generated locally)
+├── frontend/
+│   └── src/             # React UI (Vite + Tailwind)
+├── Dockerfile           # API container (trains model at build)
+├── requirements.txt
+├── DEPLOY.md            # Host API + UI in production
+└── README.md
+```
+
+---
+
+## Quick start
+
+### Clone
+
+```bash
+git clone https://github.com/swapnilswami332/fake-news-detector.git
+cd fake-news-detector
+```
 
 ### Prerequisites
 
 - Python 3.11+
 - Node.js 20+
-- [Ollama](https://ollama.com/) for the AI fact-check summary (optional)
+- [Ollama](https://ollama.com/) + `mistral` (optional, for AI summaries)
 
 ### Backend
 
@@ -44,16 +99,16 @@ python -m backend.train
 uvicorn backend.app:app --reload
 ```
 
-The API runs at `http://localhost:8000`. `backend.train` saves `model.pkl` and `vectorizer.pkl` under `backend/models/`. The API also trains them on first launch if they do not exist.
+API: **http://localhost:8000** · Health: **http://localhost:8000/health**
 
-For AI summaries, install Ollama and download Mistral:
+Optional Ollama:
 
 ```bash
 ollama pull mistral
 ollama serve
 ```
 
-The prediction endpoint still works if Ollama is unavailable. It returns the source links and a message asking the user to review them directly. To skip external search and Ollama entirely, set `ENABLE_FACT_CHECKING=false` before starting the API.
+Set `ENABLE_FACT_CHECKING=false` to skip search/LLM and use ML-only responses.
 
 ### Frontend
 
@@ -63,60 +118,40 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
+Open **http://localhost:5173** (Vite proxies API calls in dev).
+
+---
 
 ## API
 
-`POST /predict`
+**`POST /predict`**
 
 ```json
 { "text": "Scientists publish a peer reviewed study on coastal erosion trends." }
 ```
 
-Example response shape:
+**`GET /health`** → `{"status":"ok"}`
 
-```json
-{
-  "prediction": "Real",
-  "confidence": 78,
-  "trust_score": 62,
-  "model_reason": "The reporting-style language around “peer reviewed, study” influenced this result.",
-  "ai_fact_check": "Relevant sources were found...",
-  "sources": [{ "title": "Example source", "url": "https://example.com" }],
-  "processing_time_ms": 824
-}
-```
+Example response fields: `prediction`, `confidence`, `trust_score`, `model_reason`, `ai_fact_check`, `sources[]`, `processing_time_ms`.
 
-`GET /health` returns `{"status":"ok"}`.
+---
 
-## How it works
+## Deployment
 
-1. The text is lightly normalized, then scored by a TF-IDF and Logistic Regression model.
-2. SHAP identifies the token contributions for the chosen class. If SHAP cannot run in the local environment, a coefficient-based equivalent is used.
-3. The longest sentence is used as the central claim for DuckDuckGo search.
-4. Search results are ranked with MiniLM embeddings and FAISS when available. Trusted public-interest domains receive a small boost.
-5. Ollama Mistral is instructed to describe whether the links are supportive, contradictory, or insufficient. It is told to preserve uncertainty.
-6. The response combines those signals into a credibility score. The score is a UI aid, not a probability of truth.
+Public hosting needs a deployed API URL and CORS configuration. Step-by-step guide:
 
-## Project notes
+**[DEPLOY.md](DEPLOY.md)** — Render/Railway (API) + Vercel/Netlify (UI), env vars `VITE_API_URL` and `CORS_ORIGINS`.
 
-The included training corpus in `backend/train.py` is deliberately small and transparent. It is a demo baseline made of illustrative examples, not a benchmark dataset. Replace it with a labeled, licensed dataset and evaluate on a held-out test set before making claims about accuracy.
+---
 
-## Known limitations
+## Limitations
 
-- The ML model detects linguistic patterns; it cannot determine whether factual claims are true.
-- Search results can be incomplete, biased, outdated, or manipulated.
-- The LLM may misunderstand a source or produce an incorrect summary.
-- A high confidence score reflects this model's certainty, not verified truth.
-- Predictions should never replace professional journalism, domain experts, or established fact-checking organizations.
+- The model detects **writing style**, not ground truth.
+- Search and LLM outputs can be incomplete or wrong.
+- High confidence ≠ verified fact.
+- Not a substitute for professional journalism or established fact-checkers.
 
-## Future improvements
-
-- Add dataset versioning, train/validation metrics, and threshold calibration.
-- Extract multiple claims instead of using one representative sentence.
-- Show source snippets and publication dates alongside links.
-- Add automated tests for API responses and text preprocessing.
-- Support a hosted LLM provider for deployments where local Ollama is unsuitable.
+---
 
 ## Docker
 
@@ -125,4 +160,10 @@ docker build -t truthlens-api .
 docker run -p 8000:8000 truthlens-api
 ```
 
-This image runs the API, but does not bundle Ollama. Configure an accessible Ollama service or set `ENABLE_FACT_CHECKING=false` for a self-contained ML-only container.
+Ollama is not included in the image. Use a reachable Ollama host or `ENABLE_FACT_CHECKING=false` for ML-only mode.
+
+---
+
+## Tech stack
+
+Python · FastAPI · scikit-learn · SHAP · DuckDuckGo Search · Sentence Transformers · FAISS · LangChain Ollama · React · TypeScript · Tailwind · Axios

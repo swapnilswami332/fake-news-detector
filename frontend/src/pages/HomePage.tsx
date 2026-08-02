@@ -3,6 +3,7 @@ import axios from "axios";
 
 import { InputPanel } from "../components/InputPanel";
 import { ResultCard } from "../components/ResultCard";
+import { API_BASE } from "../config";
 import type { Prediction } from "../types";
 
 type HistoryItem = Pick<Prediction, "prediction" | "confidence"> & { text: string };
@@ -21,7 +22,7 @@ export function HomePage() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post<Prediction>("/predict", { text });
+      const response = await axios.post<Prediction>(`${API_BASE}/predict`, { text });
       setResult(response.data);
       setHistory((items) =>
         [{ text, prediction: response.data.prediction, confidence: response.data.confidence }, ...items].slice(0, 5)

@@ -25,8 +25,19 @@ export default function App() {
         </button>
       </nav>
       <HomePage />
-      <footer className="mx-auto max-w-5xl px-4 pb-8 text-xs text-slate-500 sm:px-6">
-        TruthLens is an educational tool and does not replace professional reporting or fact-checking.
+      <footer className="mx-auto max-w-5xl space-y-2 px-4 pb-8 text-xs text-slate-500 sm:px-6">
+        <p>
+          TruthLens is an educational tool and does not replace professional reporting or
+          fact-checking.
+        </p>
+        <a
+          href="https://github.com/swapnilswami332/fake-news-detector"
+          target="_blank"
+          rel="noreferrer"
+          className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+        >
+          View source on GitHub
+        </a>
       </footer>
     </div>
   );

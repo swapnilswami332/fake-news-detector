@@ -2,6 +2,11 @@
   "name": "truthlens-frontend",
   "private": true,
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swapnilswami332/fake-news-detector.git"
+  },
+  "homepage": "https://github.com/swapnilswami332/fake-news-detector#readme",
   "type": "module",
   "scripts": {
     "dev": "vite",

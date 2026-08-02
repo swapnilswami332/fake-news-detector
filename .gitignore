@@ -9,3 +9,5 @@ backend/models/*.pkl
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
+
+debug-*.log
